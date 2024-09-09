@@ -5,7 +5,7 @@
     <div class="row justify-content-center">
         <div class="col-md-8">
             <div class="card">
-                <div class="card-header">{{ __('Dashboard') }}</div>
+                <div class="card-header">{{ __('Your Slot List') }}</div>
 
                 <div class="card-body">
                     @if (session('status'))
@@ -18,8 +18,8 @@
                 </div>
                 
                 <div class="card-body">
-                    <a href="{{ route('index') }}" class="btn btn-success">Book Slots</a>
-                    <a href="{{ route('slotList') }}" class="btn btn-danger">Your Slots</a>
+                    
+
                 </div>
             </div>
         </div>
