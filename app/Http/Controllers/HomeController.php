@@ -34,26 +34,7 @@ class HomeController extends Controller
 
     public function availableslot()
     {
-        // $timeSlots = TimeSlot::all()->toArray();
-
-        // $a = Availability::groupBy()
-
         $timeSlots = TimeSlot::all()->toArray();
-        // $bookedSlots = Availability::get()->toArray();
-        // $fromSlot = $bookedSlots['fromTime'];
-        // $toTime = $bookedSlots['toTime'];   
-        // $fromDisableSlot = $toDisableSlot = [];
-        // foreach($bookedSlots as $singleBook){
-        //     for($i = $singleBook['fromTime']; $i <= $singleBook['toTime']; $i++){
-        //         if($i != $singleBook['fromTime']){
-        //             $toDisableSlot[$singleBook['day']][] = $i;
-        //         }
-        //         if($i != $singleBook['toTime']){
-        //             $fromDisableSlot[$singleBook['day']][] = $i;
-        //         }
-        //     }
-        // }
-        // echo '<pre>';print_r($fromDisableSlot);die;
         return view('availableslot', compact('timeSlots'));
     }
 
@@ -68,9 +49,7 @@ class HomeController extends Controller
         $data['fromTime'] = $request->fromslot;
         $data['toTime'] = $request->toslot;
         $data['day'] = $request->day;
-        echo '<pre>';
-        print_r($availability);
-        die;
+
         if (in_array($request->fromslot, $blockedSlots) || in_array($request->toslot, $blockedSlots)) {
             return redirect()->route('availableslot')->with('error', 'this Slots is already booked!');
         } else {
@@ -86,13 +65,28 @@ class HomeController extends Controller
     public function booking()
     {
         $todayDate = $_GET ? $_GET['date'] : Carbon::now('Asia/Kolkata')->format('Y-m-d');
-        $bookedSlots = Availability::where('date',$todayDate)->get();
+        $bookedSlots = Availability::where('date', $todayDate)->get();
         $slotArray = [];
-        foreach($bookedSlots as $row){
-            array_push($slotArray,$row->idTimeSlot);
+        foreach ($bookedSlots as $row) {
+            array_push($slotArray, $row->idTimeSlot);
         }
-        $data = TimeSlot::whereNotIn('id',$slotArray)->get();
-        return view('index', compact('data','todayDate'));
+        $data = TimeSlot::whereNotIn('id', $slotArray)->get();
+        if ($todayDate == Carbon::now('Asia/Kolkata')->format('Y-m-d')) {
+            $currentTimeSlotId = '';
+            $currentHour = Carbon::now('Asia/Kolkata')->format('H');
+            foreach ($data as $row) {
+                if ($row->from <= $currentHour && $row->to >= $currentHour) {
+                    $currentTimeSlotId = $row->id;
+                    break;
+                }
+            }
+            if ($currentTimeSlotId) {
+                $expiredSlots = range(9, $currentTimeSlotId);
+                $blockedSlots = array_merge($slotArray, $expiredSlots);
+                $data = TimeSlot::whereNotIn('id', $blockedSlots)->get();
+            }
+        }
+        return view('index', compact('data', 'todayDate'));
     }
 
     public function search(Request $request)
@@ -116,32 +110,45 @@ class HomeController extends Controller
             'slots' => 'required'
         ]);
 
-        if($request->slots){
-            $ifUserBookedSlot = Availability::where('date',$request->date)->where('idusers',Auth::id())->count();
-            if($ifUserBookedSlot){
+        if ($request->slots) {
+            $ifUserBookedSlot = Availability::where('date', $request->date)->where('idusers', Auth::id())->count();
+            if ($ifUserBookedSlot) {
                 return redirect()->back()->with('error', 'Only one slot you can book, please book another date slot!');
             }
 
-            $slot = Availability::where('date',$request->date)->where('idTimeSlot',$request->slots)->first();
-            if(!$slot){
+            $slot = Availability::where('date', $request->date)->where('idTimeSlot', $request->slots)->first();
+            if (!$slot) {
                 $arr['date'] = $request->date;
                 $arr['idTimeSlot'] = $request->slots;
                 $arr['idUsers'] = Auth::id();
                 $insert = Availability::insert($arr);
-                if($insert){
+                if ($insert) {
                     return redirect()->back()->with('success', 'Slots booked successfully!');
-                }else{
+                } else {
                     return redirect()->back()->with('error', 'Slots Not booked, please try again!');
                 }
-            }else{
+            } else {
                 return redirect()->back()->with('error', 'Slots Already Booked, Please select another slot!');
             }
-        }else{
+        } else {
             return redirect()->back()->with('error', 'Please select slot!');
         }
     }
 
-    public function slotList(){
-        return view('slotList');
+    public function slotList()
+    {
+        $pastSlots = $upcomingSlots = [];
+        $currentdate = Carbon::now('Asia/Kolkata')->format('Y-m-d');
+        // $currentdate = date('Y-m-d');
+        $allSlots = Availability::where('idUsers',Auth::user()->id)->get();
+        foreach($allSlots as $row){
+            if(strtotime($row->date) <= strtotime($currentdate)){
+                array_push($pastSlots,$row);
+            }else{
+                array_push($upcomingSlots,$row);
+            }
+        }
+        // echo '<pre>';print_r($upcomingSlots);die;
+        return view('slotList',compact('pastSlots','upcomingSlots'));
     }
 }

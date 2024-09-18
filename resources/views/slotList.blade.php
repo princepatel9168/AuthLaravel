@@ -18,7 +18,7 @@
                 </div>
                 
                 <div class="card-body">
-                    
+                    <h5 class="text-danger text-center">Past Bookings</h5>                    
 
                 </div>
             </div>
